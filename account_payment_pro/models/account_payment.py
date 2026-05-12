@@ -984,6 +984,12 @@ class AccountPayment(models.Model):
         for rec in self:
             rec.to_pay_amount = rec.selected_debt + rec.unreconciled_amount
 
+    @api.onchange("to_pay_move_line_ids")
+    def _onchange_amount(self):
+        for rec in self.filtered(lambda r: r.company_id.use_payment_pro):
+            if rec.amount != abs(rec.to_pay_amount):
+                rec.amount = abs(rec.to_pay_amount)
+
     @api.onchange("to_pay_amount")
     def _inverse_to_pay_amount(self):
         for rec in self:
@@ -1004,11 +1010,13 @@ class AccountPayment(models.Model):
         Aplica a todos los tipos de pago (clientes y proveedores).
         """
         for rec in self:
-            if not rec.use_payment_pro or rec.state != "draft":
+            if not rec.use_payment_pro or rec.state != "draft" or not rec.currency_id:
                 continue
             if not rec.to_pay_move_line_ids:
+                if not rec.currency_id.is_zero(rec.amount - abs(rec.to_pay_amount)):
+                    rec.amount = abs(rec.to_pay_amount)
                 continue
-            if not rec.payment_difference or not rec.currency_id:
+            if not rec.payment_difference:
                 continue
             diff_in_a = rec._get_payment_difference_in_currency_a()
             amount = rec.amount + diff_in_a
