@@ -25,13 +25,12 @@ class AccountMove(models.Model):
 
     def _get_starting_sequence(self):
         if self.receiptbook_id:
+            doc_prefix = self.receiptbook_id.document_type_id.doc_code_prefix or ""
+            prefix = self.receiptbook_id.prefix or ""
+            initial_sequence = self.receiptbook_id.initial_sequence - 1
             if self.receiptbook_id.document_type_id:
-                return "%s %s%08d" % (
-                    self.receiptbook_id.document_type_id.doc_code_prefix,
-                    self.receiptbook_id.prefix,
-                    self.receiptbook_id.initial_sequence - 1,
-                )
-            return "%s%08d" % (self.receiptbook_id.prefix, self.receiptbook_id.initial_sequence - 1)
+                return "%s %s%08d" % (doc_prefix, prefix, initial_sequence)
+            return "%s%08d" % (prefix, initial_sequence)
         return super()._get_starting_sequence()
 
     def _get_next_sequence_format(self):

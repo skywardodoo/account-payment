@@ -64,6 +64,41 @@ class TestAccountPaymentProReceiptbookUnitTest(AccountTestInvoicingCommon, Trans
         payment.action_post()
         self.assertEqual(payment.name, name, "no se tomo la secuencia correcta del pago")
 
+    def test_create_payment_with_false_prefix(self):
+        self.receiptbook.write({"prefix": False})
+
+        invoice = self.env["account.move"].create(
+            {
+                "partner_id": self.partner_ri.id,
+                "invoice_date": self.today,
+                "move_type": "out_invoice",
+                "journal_id": self.company_sale_journal.id,
+                "company_id": self.company.id,
+                "invoice_line_ids": [
+                    Command.create(
+                        {
+                            "product_id": self.env.ref("product.product_product_16").id,
+                            "quantity": 1,
+                            "price_unit": 100,
+                        }
+                    ),
+                ],
+            }
+        )
+        invoice.action_post()
+
+        vals = {
+            "journal_id": self.company_bank_journal.id,
+            "amount": invoice.amount_total,
+            "date": self.today,
+        }
+        action_context = invoice.action_register_payment()["context"]
+        payment = self.env["account.payment"].with_context(**action_context).create(vals)
+        payment.action_post()
+
+        self.assertNotIn("False", payment.name, "the receiptbook prefix should not be stringified as False")
+        self.assertTrue(payment.name.startswith(self.receiptbook.document_type_id.doc_code_prefix))
+
     def test_payment_amount_update(self):
         """Test creating a payment, posting it, resetting to draft, updating amount, and validating name."""
         payment = self.env["account.payment"].create(
